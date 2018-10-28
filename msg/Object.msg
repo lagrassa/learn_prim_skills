@@ -1,0 +1,12 @@
+string name
+geometry_msgs/PoseStamped pose
+std_msgs/ColorRGBA rgba
+string color
+uint8 surface
+bool observed
+bool registered
+bool truncated
+bool occluded
+float32 range
+float32 occupancy
+float32 volume

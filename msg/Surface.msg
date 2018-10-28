@@ -1,0 +1,10 @@
+string name
+object_recognition_msgs/Table table
+object_recognition_msgs/Table full_table
+std_msgs/ColorRGBA color
+bool observed
+bool truncated
+bool occluded
+float32 range
+float32 occupancy
+float32 volume

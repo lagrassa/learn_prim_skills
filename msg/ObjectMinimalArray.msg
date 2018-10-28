@@ -1,0 +1,1 @@
+ObjectMinimal[] objects
