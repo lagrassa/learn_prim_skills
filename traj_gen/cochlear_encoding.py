@@ -4,8 +4,14 @@ import mdp
 import matplotlib.pyplot as plt
 
 
-def filename_to_traj(filename):
-    return np.load("recordings/"+filename)    
+def filename_to_traj(num, name="scrape"):
+    data_dims = []
+    for dim in ["x", "y", "z"]:
+        filename = "recordings/"+ "force_"+dim+name+str(num)+".npy" 
+        dim_data= np.load(filename) 
+        dim_data += np.random.normal(0,0.1,dim_data.shape[0])
+        data_dims.append(dim_data.reshape(-1,1))
+    return np.hstack(data_dims)
 
 def highest_n_mag_freqs(signal, n):
     signal_fft = np.fft.fft(signal)
@@ -61,37 +67,52 @@ def plot_slow(signal_list, flow, label = "No title"):
         surface.plot(flow(signal_list[i].reshape(-1,1)), color='b')
         surface.plot(signal_list[i], color='r')
 
+"list of flows for each dim"
 def sfa(signal_list):
     #put into format where columns are variables and rows are observations
-    flow = (mdp.nodes.EtaComputerNode() +
-        mdp.nodes.TimeFramesNode(5) +
-        mdp.nodes.PolynomialExpansionNode(2) +
-        mdp.nodes.SFANode(output_dim=1, include_last_sample=True) +
-        mdp.nodes.EtaComputerNode() )
-    for signal in signal_list:
-        signal = signal.reshape(-1,1)
-        flow.train(signal.reshape(-1,1))
-    return flow
+    ndims = signal_list[0].shape[1]
+    flows = []
+    for i in range(ndims):
+        flow = (mdp.nodes.EtaComputerNode() +
+            mdp.nodes.TimeFramesNode(5) +
+            mdp.nodes.PolynomialExpansionNode(2) +
+            mdp.nodes.SFANode(output_dim=1, include_last_sample=True) +
+            mdp.nodes.EtaComputerNode() )
+        for signal in signal_list:
+            signal_to_train_on = signal[:,i]
+            flow.train(signal_to_train_on.reshape(-1,1))
+        flows.append(flow)
+    return flows
     
     
     
+def apply_flows(flows, signal):
+    outputs = []
+    for i in range(len(flows)):
+        flow = flows[i]
+        output = flow(signal[:,i].reshape(-1,1))
+        outputs.append(output)
+    return np.hstack(outputs)
+    
+     
 
 def main():
     #This aims to find an encoding that forms a spectrogram that is visibly different between good force trajectories and bad ones
     successes = [0,1,2,3,4,5,6,7,8,12]
     fails = [9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
-    good_traj = [filename_to_traj("force_zscrape"+str(num)+".npy") for num in successes]
-    bad_traj = [filename_to_traj("force_zscrape"+str(num)+".npy") for num in fails]
-    print(most_common_freqs_list(good_traj))
-    print(most_common_freqs_list(bad_traj))
+    good_traj = [filename_to_traj(num) for num in successes]
+    bad_traj = [filename_to_traj(num) for num in fails]
     x = np.linspace(0,50, 3000)
     x += np.random.normal(1,0.9,3000)
     #simple_traj = np.hstack([np.sin(x), np.sin(5*x), np.sin(0.5*x)])
     simple_traj= (x-15)**2*(x-2)**2*(x-35)**2*(x-50)**2
-    flow = sfa(good_traj)
-    plot_slow(good_traj, flow, label = "Good trajectories")
-    plot_slow(bad_traj, flow, label = "Bad trajectories")
-    plt.show()
+    flows= sfa(good_traj)
+    output = apply_flows(flows, good_traj[0])
+
+    #print(flow(good_traj[0]))
+    #plot_slow(good_traj, flow, label = "Good trajectories")
+    #plot_slow(bad_traj, flow, label = "Bad trajectories")
+    #plt.show()
     
     
     #take the top 10 from every set, then pick the mode of that
