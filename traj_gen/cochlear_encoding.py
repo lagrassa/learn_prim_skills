@@ -85,8 +85,7 @@ def sfa(signal_list):
         flows.append(flow)
     return flows
     
-    
-    
+        
 def apply_flows(flows, signal):
     outputs = []
     for i in range(len(flows)):
@@ -104,20 +103,23 @@ def get_flows(example_signal):
     flows= sfa(example_signal)
     return flows
 
-def train(data, labels):
+def train_classifier(data, labels):
     import keras
     from keras.models import Sequential
-    from keras.layers import Dense, Activation
+    from keras.layers import Dense, Activation, Conv2D, Flatten
+    model = Sequential()
+    model.add(Conv2D(32, (2, 2), activation='relu', input_shape=data.shape[1:]+(1,)))
+    model.add(Flatten())
+    model.add(Dense(32))
+    model.add(Activation('relu'))
+    model.add(Dense(1))
+    model.add(Activation('sigmoid'))
+    model.compile(optimizer='adam',
+              loss='binary_crossentropy', metrics=['accuracy'])
+    data = data.reshape(data.shape+ (1,))
+    model.fit(data, labels, epochs=10, batch_size=5)
+    return model
 
-    model = Sequential([
-        Dense(32, input_shape=(784,)),
-        Activation('relu'),
-        Dense(10),
-        Activation('softmax'),
-    ])
-    model.compile(optimizer='rmsprop',
-              loss='mse')
-    model.train(data, labels)
 
     
 def visualize_encoding(encoded_signals, label=""):
@@ -136,21 +138,37 @@ def visualize_encoding(encoded_signals, label=""):
         surface.imshow(im)
         i += 1
     
- 
-
-def main():
-    #This aims to find an encoding that forms a spectrogram that is visibly different between good force trajectories and bad ones
+def make_dataset(outputs, label):
+    data = np.zeros((len(outputs),)+ outputs[0].shape)
+    i = 0
+    for output in outputs:
+        data[i, :, :] = output
+        i += 1
+    labels = np.array([label]*len(outputs))
+    return data, labels
+    
+def test_encoding():
     successes = [0,1,2,3,4,5,6,7,8,12]
     fails = [9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
     good_trajs = [filename_to_traj(num) for num in successes]
     bad_trajs = [filename_to_traj(num) for num in fails]
     flows = get_flows(good_trajs)
+    good_encoded_signals = [apply_flows(flows, traj) for traj in good_trajs]
+    bad_encoded_signals = [apply_flows(flows, traj) for traj in bad_trajs]
+    good_data, good_labels = make_dataset(good_encoded_signals, 1)
+    bad_data, bad_labels = make_dataset(bad_encoded_signals, 0)
+    data = np.vstack([good_data, bad_data])
+    labels= np.hstack([good_labels, bad_labels])
+    model = train_classifier(data, labels)
     
-    encoded_signals = [apply_flows(flows, traj) for traj in good_trajs]
-    visualize_encoding(encoded_signals, label="Good trajectories")
-    encoded_signals = [apply_flows(flows, traj) for traj in bad_trajs]
-    visualize_encoding(encoded_signals, label="Bad trajectories")
-    plt.show()
+     
+    
+    
+     
+
+def main():
+    #This aims to find an encoding that forms a spectrogram that is visibly different between good force trajectories and bad ones
+    test_encoding()
     
 
 
