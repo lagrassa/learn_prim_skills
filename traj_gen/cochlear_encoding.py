@@ -1,4 +1,5 @@
 import numpy as np
+from PIL import Image
 import ipdb
 import mdp
 import matplotlib.pyplot as plt
@@ -95,29 +96,62 @@ def apply_flows(flows, signal):
     return np.hstack(outputs)
     
      
+def get_flows(example_signal):
+    x = np.linspace(0,50, 3000)
+    x += np.random.normal(1,0.9,3000)
+    #simple_traj = np.hstack([np.sin(x), np.sin(5*x), np.sin(0.5*x)])
+    simple_traj= (x-15)**2*(x-2)**2*(x-35)**2*(x-50)**2
+    flows= sfa(example_signal)
+    return flows
+
+def train(data, labels):
+    import keras
+    from keras.models import Sequential
+    from keras.layers import Dense, Activation
+
+    model = Sequential([
+        Dense(32, input_shape=(784,)),
+        Activation('relu'),
+        Dense(10),
+        Activation('softmax'),
+    ])
+    model.compile(optimizer='rmsprop',
+              loss='mse')
+    model.train(data, labels)
+
+    
+def visualize_encoding(encoded_signals, label=""):
+    import math
+    h = math.ceil(len(encoded_signals)**0.5)
+    f, axarr = plt.subplots(h,h)
+    f.suptitle(label, fontsize=20)
+    i = 0
+    scale = 8
+    for encoded_signal in encoded_signals:
+        im = Image.fromarray(encoded_signal*255)
+        im = im.resize((40,40))
+        col = i % h
+        row = (i - col) / h
+        surface = axarr[row, col]
+        surface.imshow(im)
+        i += 1
+    
+ 
 
 def main():
     #This aims to find an encoding that forms a spectrogram that is visibly different between good force trajectories and bad ones
     successes = [0,1,2,3,4,5,6,7,8,12]
     fails = [9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
-    good_traj = [filename_to_traj(num) for num in successes]
-    bad_traj = [filename_to_traj(num) for num in fails]
-    x = np.linspace(0,50, 3000)
-    x += np.random.normal(1,0.9,3000)
-    #simple_traj = np.hstack([np.sin(x), np.sin(5*x), np.sin(0.5*x)])
-    simple_traj= (x-15)**2*(x-2)**2*(x-35)**2*(x-50)**2
-    flows= sfa(good_traj)
-    output = apply_flows(flows, good_traj[0])
+    good_trajs = [filename_to_traj(num) for num in successes]
+    bad_trajs = [filename_to_traj(num) for num in fails]
+    flows = get_flows(good_trajs)
+    
+    encoded_signals = [apply_flows(flows, traj) for traj in good_trajs]
+    visualize_encoding(encoded_signals, label="Good trajectories")
+    encoded_signals = [apply_flows(flows, traj) for traj in bad_trajs]
+    visualize_encoding(encoded_signals, label="Bad trajectories")
+    plt.show()
+    
 
-    #print(flow(good_traj[0]))
-    #plot_slow(good_traj, flow, label = "Good trajectories")
-    #plot_slow(bad_traj, flow, label = "Bad trajectories")
-    #plt.show()
-    
-    
-    #take the top 10 from every set, then pick the mode of that
-    #first let's just start on the z axis
-    #print out the most salient frequencies 
-    
 
 main()
