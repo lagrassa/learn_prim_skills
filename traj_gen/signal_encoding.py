@@ -110,15 +110,21 @@ def get_flows(example_signal):
 def train_classifier(data, labels):
     model = Sequential()
     model.add(Conv2D(32, (2, 2), activation='relu', input_shape=data.shape[1:]))
+    cortical_model = Sequential()
+    cortical_model.add(Conv2D(32, (2, 2), activation='relu', input_shape=data.shape[1:]))
     model.add(Flatten())
     model.add(Dense(32))
     model.add(Activation('relu'))
     model.add(Dense(2,  activation='softmax'))
     model.compile(optimizer='adam',
               loss='categorical_crossentropy', metrics=['accuracy'])
+    cortical_model.compile(optimizer='adam',
+              loss='categorical_crossentropy', metrics=['accuracy'])
+    conv_weights = model.get_weights()[0]
+    cortical_model.set_weights([conv_weights])
     one_hot_labels =  keras.utils.to_categorical(labels, num_classes=2)
     model.fit(data, one_hot_labels, epochs=10, batch_size=5)
-    return model
+    return model, cortical_model
 
 
     
@@ -158,7 +164,10 @@ def make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signal
     data = np.vstack([good_data, bad_data])
     labels= np.hstack([good_labels, bad_labels])
     return data, labels
- 
+
+"""make the encoder"""
+def encode_signal():
+    encoder = test_encoding()
     
 def test_encoding():
     successes = [0,1,2,3,4,5,6,7,8,12]
@@ -171,9 +180,22 @@ def test_encoding():
     num_train_good = 7
     num_train_bad = 10
     data, labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False)
-    model = train_classifier(data, labels)
+    model, cortical_model = train_classifier(data, labels)
     test_data, test_labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False)
     print ("accuracy", test_model(model, test_data, test_labels))
+    def encoder(sample):
+        #put it through the signal processing model
+        nerve_signal = apply_flows(flows, traj)
+        #then through the cortical model
+        cortical_response = apply_cortical_processing(nerve_signal, cortical_model)
+        ipdb.set_trace()
+        return cortical_response
+    return encoder
+
+
+def apply_cortical_processing(nerve_signal, cortical_model):
+   input_signal = nerve_signal.reshape((1,)+nerve_signal.shape+(1,))
+   return cortical_model.predict(input_signal)
     
 def test_model(model, test_data, test_labels):
     predictions = model.predict(test_data)
@@ -195,7 +217,7 @@ def test_model(model, test_data, test_labels):
 
 def main():
     #This aims to find an encoding that forms a spectrogram that is visibly different between good force trajectories and bad ones
-    test_encoding()
+    encode_signal()
     
 
 
