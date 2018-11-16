@@ -123,7 +123,7 @@ def train_classifier(data, labels):
     conv_weights = model.get_weights()[0]
     cortical_model.set_weights([conv_weights])
     one_hot_labels =  keras.utils.to_categorical(labels, num_classes=2)
-    model.fit(data, one_hot_labels, epochs=10, batch_size=5)
+    model.fit(data, one_hot_labels, epochs=10, batch_size=5, verbose=1)
     return model, cortical_model
 
 
@@ -166,8 +166,9 @@ def make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signal
     return data, labels
 
 """make the encoder"""
-def encode_signal():
-    encoder = test_encoding()
+def make_encoder():
+    encoder, good_response = test_encoding()
+    return encoder, good_response
     
 def test_encoding():
     successes = [0,1,2,3,4,5,6,7,8,12]
@@ -185,12 +186,13 @@ def test_encoding():
     print ("accuracy", test_model(model, test_data, test_labels))
     def encoder(sample):
         #put it through the signal processing model
-        nerve_signal = apply_flows(flows, traj)
+        nerve_signal = apply_flows(flows, sample)
         #then through the cortical model
         cortical_response = apply_cortical_processing(nerve_signal, cortical_model)
-        ipdb.set_trace()
         return cortical_response
-    return encoder
+    ipdb.set_trace()
+    good_response = encoder(good_trajs[0])
+    return encoder, good_response
 
 
 def apply_cortical_processing(nerve_signal, cortical_model):
@@ -208,8 +210,6 @@ def test_model(model, test_data, test_labels):
             num_correct += 1 
     return num_correct/predictions.shape[0]
         
-        
-    
     #model_pred = model.predict(test_data)
     #num_incorrect = sum(abs(model_pred - test_labels))
     #total_num = test_data.shape[0]
@@ -217,7 +217,7 @@ def test_model(model, test_data, test_labels):
 
 def main():
     #This aims to find an encoding that forms a spectrogram that is visibly different between good force trajectories and bad ones
-    encode_signal()
+    make_encoder()
     
 
 
