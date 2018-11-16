@@ -190,7 +190,6 @@ def test_encoding():
         #then through the cortical model
         cortical_response = apply_cortical_processing(nerve_signal, cortical_model)
         return cortical_response
-    ipdb.set_trace()
     good_response = encoder(good_trajs[0])
     return encoder, good_response
 

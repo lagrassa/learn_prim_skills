@@ -1,4 +1,7 @@
 #from signal_encoding import  encode_signal
+from __future__ import division
+from functools import reduce
+import operator
 import ipdb
 import matplotlib.pyplot as plt
 import signal_encoding
@@ -41,24 +44,28 @@ def plot_forces(forces):
     plt.show()
 
 def distance(signal1, signal2):
-    return np.linalg.norm(signal1-signal2)
+    num_points = reduce(operator.mul, signal1.shape, 1)
+    return np.linalg.norm(signal1-signal2)/num_points
 
 def gen_weights():
     N = 20    
-    a = -1
-    b = 1
+    #should go roughly from -5 to 11
+    a = -4
+    b = 5
     force_params = (b - a) * np.random.random_sample((N**3)) + a
     return force_params
 
 def find_best_encoding():
     n_traj = 100  
-    num_iters=2
+    num_iters=50
     encoder, good_response = signal_encoding.make_encoder()
     force_to_dist = {}
     force_list = [] 
     for i in range(num_iters):
         weights = gen_weights()
         forces = gen_parameterized_forces(weights, n_traj)
+        #print("Min", np.min(forces.flatten()))
+        #print("Max", np.max(forces.flatten()))
         response = encoder(forces)
         dist = distance(response, good_response)
         force_list.append(forces)
@@ -70,7 +77,7 @@ def find_best_encoding():
     
         
 #plot_forces(gen_parameterized_forces(force_params, 100, N=N))
-find_best_encoding()
+print(find_best_encoding())
     
     
     
