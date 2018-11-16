@@ -43,9 +43,13 @@ def plot_forces(forces):
         plt.plot(forces[:, i], color = colors[i], label=labels[i])
     plt.show()
 
-def distance(signal1, signal2):
-    num_points = reduce(operator.mul, signal1.shape, 1)
-    return np.linalg.norm(signal1-signal2)/num_points
+def distance(signal, compare_signals):
+    num_points = reduce(operator.mul, signal.shape, 1)
+    dists = []
+    for compare_signal in compare_signals:
+        dist =  np.linalg.norm(signal-compare_signal)/num_points
+        dists.append(dist)
+    return np.average(dists)
 
 def gen_weights():
     N = 20    
@@ -57,8 +61,8 @@ def gen_weights():
 
 def find_best_encoding():
     n_traj = 100  
-    num_iters=50
-    encoder, good_response = signal_encoding.make_encoder()
+    num_iters=2000
+    encoder, good_responses = signal_encoding.make_encoder()
     force_to_dist = {}
     force_list = [] 
     for i in range(num_iters):
@@ -67,7 +71,7 @@ def find_best_encoding():
         #print("Min", np.min(forces.flatten()))
         #print("Max", np.max(forces.flatten()))
         response = encoder(forces)
-        dist = distance(response, good_response)
+        dist = distance(response, good_responses)
         force_list.append(forces)
         force_to_dist[i] = dist
     best_i = min(force_to_dist.keys(), key=lambda x: force_to_dist[x])
@@ -77,7 +81,7 @@ def find_best_encoding():
     
         
 #plot_forces(gen_parameterized_forces(force_params, 100, N=N))
-print(find_best_encoding())
+find_best_encoding()
     
     
     

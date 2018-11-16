@@ -167,8 +167,8 @@ def make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signal
 
 """make the encoder"""
 def make_encoder():
-    encoder, good_response = test_encoding()
-    return encoder, good_response
+    encoder, good_responses = test_encoding()
+    return encoder, good_responses
     
 def test_encoding():
     successes = [0,1,2,3,4,5,6,7,8,12]
@@ -190,8 +190,8 @@ def test_encoding():
         #then through the cortical model
         cortical_response = apply_cortical_processing(nerve_signal, cortical_model)
         return cortical_response
-    good_response = encoder(good_trajs[0])
-    return encoder, good_response
+    good_responses = [encoder(traj) for traj in good_trajs]
+    return encoder, good_responses
 
 
 def apply_cortical_processing(nerve_signal, cortical_model):
