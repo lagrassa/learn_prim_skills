@@ -6,33 +6,38 @@ import ipdb
 import matplotlib.pyplot as plt
 import signal_encoding
 import numpy as np
+PLOT = False
+lower = [-2,-4,-6]
+upper = [2,5,8]
 
 def rbf(x, width, center):
    return np.exp(-width * (x-center)**2) 
+   #coeff = 1.0/(sigma*(2*np.pi)**0.5) 
+   #return coeff*np.exp((-0.5*((x-center)/sigma))**2)
 
 """not going to make these params meaningful currently
 sum of N 3D gaussians weighted by weight to get a n_traj x 3 trajectory
 """
 def gen_parameterized_forces(weights, n_traj, N = 3):
-    length = 4
     #could be a sum of basis functions, where the params are the weights
     #make a multivariate RBG 3 dimensions 
-    centers_list  = []
-    center_one_dim = np.linspace(0,n_traj, N)
-    for x in center_one_dim:
-        for y in center_one_dim:
-            for z in center_one_dim:
-                centers_list.append([x,y,z])
-    centers = np.vstack(centers_list)
+    centers_list = np.linspace(0,n_traj, N)
     #rbfs = [lambda x: np.exp(-0.05 * (x - center)**2) for center in centers ] 
-    input_space = np.linspace(0,95, 100)
     result = np.zeros((n_traj, 3))
-    for i in range(len(centers)):
-        grid_result = np.zeros((n_traj, 3)) 
-        for traj in range(n_traj):
-            grid_result[traj] = rbf(traj, 0.02, centers[i])
-        result += weights[i]*grid_result
-    return result
+    #add each of the RBFs with n_traj points
+    center_span =0.02
+    for dim in range(3): #for each dimension
+        for i in range(len(centers_list)): #for each center
+            grid_result = np.zeros((n_traj, 3)) 
+            for traj in range(n_traj): #for each point
+                grid_result[traj, dim] = rbf(traj, center_span, centers_list[i])
+            try:
+                result += weights[dim, i]*grid_result
+            except:
+                print("Some sort of shape error", "weights are ", weights.shape)
+                ipdb.set_trace()
+    rescaled_result = rescale_to_constraints(result)
+    return rescaled_result #rescaled_result
 
 
 #forces is 3 columns and n_traj points (rows)
@@ -41,6 +46,7 @@ def plot_forces(forces):
     labels = ['x', 'y', 'z']
     for i in range(3):
         plt.plot(forces[:, i], color = colors[i], label=labels[i])
+    plt.legend()
     plt.show()
 
 def distance(signal, compare_signals):
@@ -51,37 +57,67 @@ def distance(signal, compare_signals):
         dists.append(dist)
     return np.average(dists)
 
-def gen_weights():
-    N = 20    
+def gen_weights(N=3):
     #should go roughly from -5 to 11
-    a = -4
-    b = 5
-    force_params = (b - a) * np.random.random_sample((N**3)) + a
-    return force_params
+    dim_range = np.vstack([lower, upper])
+    force_param_per_dim = []
+    for dim in range(3):
+        a,b = dim_range[0, dim], dim_range[1,dim]
+        force_params_dim = (b - a) * np.random.random_sample((N)) + a
+        force_param_per_dim.append(force_params_dim)
+    force_params = np.vstack([force_param_per_dim])
+    #usually best for them to be mostly sparse actually, so erase each with probability p
+    p = 0.7
+    p_matrix = np.random.random((force_params.shape))
+    mask = p_matrix > p
+    force_params_sparse = np.where(mask, force_params, np.zeros(mask.shape))
+    return force_params_sparse
+
+def rescale_to_constraints(force_params_sparse):
+    #then normalize to be within expected ranges
+    force_params_rescaled = np.zeros(force_params_sparse.shape)
+    for dim in range(3):
+        #normalize to lower and upper
+        arr = force_params_sparse[:, dim]
+        force_params_rescaled[:, dim] = np.interp(arr, (arr.min(), arr.max()), (lower[dim], upper[dim]))
+    return force_params_rescaled
 
 def find_best_encoding():
     n_traj = 100  
-    num_iters=2000
+    num_iters=500
     encoder, good_responses = signal_encoding.make_encoder()
     force_to_dist = {}
     force_list = [] 
-    for i in range(num_iters):
+    class_list = [] 
+    dist_list = [] 
+    for i in range(20):
         weights = gen_weights()
         forces = gen_parameterized_forces(weights, n_traj)
-        #print("Min", np.min(forces.flatten()))
-        #print("Max", np.max(forces.flatten()))
-        response = encoder(forces)
-        dist = distance(response, good_responses)
+        print("Min", np.min(forces.flatten()))
+        print("Max", np.max(forces.flatten()))
+        cortical_response, classification_vector = encoder(forces) #we want the second term to be 1
+        dist = distance(cortical_response, good_responses)
+        prediction = classification_vector[0][1]
         force_list.append(forces)
+        class_list.append(prediction)
         force_to_dist[i] = dist
-    best_i = min(force_to_dist.keys(), key=lambda x: force_to_dist[x])
+        dist_list.append(dist)
+    #best_i = min(force_to_dist.keys(), key=lambda x: force_to_dist[x])
+    best_i = np.argmax(class_list)
     lowest_dist = force_to_dist[best_i]
     print("lowest dist", lowest_dist)
+    print("highest class", class_list[best_i])
+    if PLOT:
+        plt.scatter(dist_list, class_list)
+        plt.xlabel("Distance")
+        plt.ylabel("Probability successful | theta")
+        plt.show() 
+    
     return force_list[best_i]
     
-        
-#plot_forces(gen_parameterized_forces(force_params, 100, N=N))
-find_best_encoding()
+N=20 
+plot_forces(gen_parameterized_forces(gen_weights(N=N), 100, N=N))
+#plot_forces(find_best_encoding())
     
     
     
