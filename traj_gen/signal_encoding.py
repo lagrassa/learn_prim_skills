@@ -25,6 +25,13 @@ def highest_n_mag_freqs(signal, n):
     indices_by_magnitude = sorted(list(range(len(signal_fft))), key=lambda x: signal_fft[x].real)
     highest_mag_indices = indices_by_magnitude[-n:]
     return [freq[idx] for idx in highest_mag_indices]
+
+def print_traj_list_stats(traj_list):
+    dims = ['x','y','z']
+    for dim in dims:
+        print("Minimum values in "+dim, np.average([min(traj[:, dims.index(dim)]) for traj in traj_list])) 
+        print("Maximum values in "+dim, np.average([max(traj[:, dims.index(dim)]) for traj in traj_list])) 
+
     
 
 def test_highest_n_mag_freqs():
@@ -175,6 +182,8 @@ def test_encoding():
     fails = [9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
     good_trajs = [filename_to_traj(num) for num in successes]
     bad_trajs = [filename_to_traj(num) for num in fails]
+
+    #print_traj_list_stats(good_trajs)
     flows = get_flows(good_trajs)
     good_encoded_signals = [apply_flows(flows, traj) for traj in good_trajs]
     bad_encoded_signals = [apply_flows(flows, traj) for traj in bad_trajs]
@@ -189,8 +198,9 @@ def test_encoding():
         nerve_signal = apply_flows(flows, sample)
         #then through the cortical model
         cortical_response = apply_cortical_processing(nerve_signal, cortical_model)
-        return cortical_response
-    good_responses = [encoder(traj) for traj in good_trajs]
+        pred = model.predict(nerve_signal.reshape((1,)+nerve_signal.shape+(1,)))
+        return cortical_response, pred
+    good_responses = [encoder(traj)[0] for traj in good_trajs]
     return encoder, good_responses
 
 

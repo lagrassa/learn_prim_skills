@@ -7,8 +7,18 @@ import matplotlib.pyplot as plt
 import signal_encoding
 import numpy as np
 PLOT = False
-lower = [-2,-4,-6]
-upper = [2,5,8]
+"""
+('Minimum values in x', -1.8303492891940318)
+('Maximum values in x', 15.884808416405301)
+('Minimum values in y', -10.074215694184076)
+('Maximum values in y', 0.4013318639148463)
+('Minimum values in z', -15.65198031694467)
+('Maximum values in z', -2.2643545356492645)
+
+"""
+
+lower = [-1.83,-10.07,-15.6]
+upper = [15.88,0.4,-2.26]
 
 def rbf(x, width, center):
    return np.exp(-width * (x-center)**2) 
@@ -67,7 +77,7 @@ def gen_weights(N=3):
         force_param_per_dim.append(force_params_dim)
     force_params = np.vstack([force_param_per_dim])
     #usually best for them to be mostly sparse actually, so erase each with probability p
-    p = 0.7
+    p = 0.4
     p_matrix = np.random.random((force_params.shape))
     mask = p_matrix > p
     force_params_sparse = np.where(mask, force_params, np.zeros(mask.shape))
@@ -115,7 +125,7 @@ def find_best_encoding():
     
     return force_list[best_i]
     
-N=20 
+N=10 
 plot_forces(gen_parameterized_forces(gen_weights(N=N), 100, N=N))
 #plot_forces(find_best_encoding())
     
