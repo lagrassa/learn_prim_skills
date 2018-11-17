@@ -35,7 +35,7 @@ def gen_parameterized_forces(weights, n_traj, N = 3):
     #rbfs = [lambda x: np.exp(-0.05 * (x - center)**2) for center in centers ] 
     result = np.zeros((n_traj, 3))
     #add each of the RBFs with n_traj points
-    center_span =0.02
+    center_span =0.03#0.02
     for dim in range(3): #for each dimension
         for i in range(len(centers_list)): #for each center
             grid_result = np.zeros((n_traj, 3)) 
@@ -77,7 +77,7 @@ def gen_weights(N=3):
         force_param_per_dim.append(force_params_dim)
     force_params = np.vstack([force_param_per_dim])
     #usually best for them to be mostly sparse actually, so erase each with probability p
-    p = 0.4
+    p = 0.6
     p_matrix = np.random.random((force_params.shape))
     mask = p_matrix > p
     force_params_sparse = np.where(mask, force_params, np.zeros(mask.shape))
@@ -100,11 +100,11 @@ def find_best_encoding():
     force_list = [] 
     class_list = [] 
     dist_list = [] 
-    for i in range(20):
-        weights = gen_weights()
+    for i in range(300):
+        weights = gen_weights(N=20)
         forces = gen_parameterized_forces(weights, n_traj)
-        print("Min", np.min(forces.flatten()))
-        print("Max", np.max(forces.flatten()))
+        #print("Min", np.min(forces.flatten()))
+        #print("Max", np.max(forces.flatten()))
         cortical_response, classification_vector = encoder(forces) #we want the second term to be 1
         dist = distance(cortical_response, good_responses)
         prediction = classification_vector[0][1]
@@ -126,8 +126,8 @@ def find_best_encoding():
     return force_list[best_i]
     
 N=10 
-plot_forces(gen_parameterized_forces(gen_weights(N=N), 100, N=N))
-#plot_forces(find_best_encoding())
+#plot_forces(gen_parameterized_forces(gen_weights(N=N), 100, N=N))
+find_best_encoding()
     
     
     
