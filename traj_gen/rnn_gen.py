@@ -34,9 +34,9 @@ def plotting(history):
 # Data
 ##
 m = 1
-x = np.linspace(0,40,40)
+x = np.linspace(0,100,100)
 n_data = 100
-k = 0.5
+k = 0.2
 train_data =np.vstack([x for i in range(n_data)])
 train_labels =np.vstack([np.sin(k*x) for i in range(n_data)])
 plt.plot(train_labels[0])
@@ -55,7 +55,7 @@ outputs_test = y1_train.reshape(y1_train.shape+(1,))
 model=Sequential()
 dim_in = m
 dim_out = m
-nb_units = 10 # will also work with 2 units, but too long to train
+nb_units = 100 # will also work with 2 units, but too long to train
 batch_size=20
 
 model.add(LSTM(input_shape=(None, dim_in),
@@ -64,15 +64,18 @@ model.add(LSTM(input_shape=(None, dim_in),
                     stateful=True, 
                     units=nb_units))
 model.add(TimeDistributed(Dense(activation='linear', units=dim_out)))
-model.compile(loss = 'mse', optimizer = 'adam')
+model.compile(loss = 'mse', optimizer = 'rmsprop')
 
 ##
 # Training
 ##
 # 2 seconds for each epoch
 np.random.seed(1337)
-history = model.fit(inputs, outputs, epochs = 2000, batch_size = batch_size,
+history = model.fit(inputs, outputs, epochs = 300, batch_size = batch_size,
                     validation_data=(inputs_test, outputs_test))
-plotting(history)
-plt.plot(model.predict(inputs[:20])[0])
+#plotting(history)
+try:
+    plt.plot(model.predict(inputs[:batch_size])[0])
+except:
+    ipdb.set_trace()
 plt.show()
