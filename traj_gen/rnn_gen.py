@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 
-m = 1
+m = 3
 batch_size=20
 ####################################################
 # Plotting loss and val_loss as function of epochs #
@@ -30,11 +30,17 @@ def plotting(history):
 def get_data(simple=False):
     if simple:
         x = np.linspace(0,100,100)
-        n_data = 100
-        k = 0.2
-        train_data =np.vstack([x for i in range(n_data)])
-        train_labels =np.vstack([np.sin(k*x) for i in range(n_data)])
-        plt.plot(train_labels[0])
+        n_data = 40
+        k = 0.1
+        train_data = np.zeros((n_data, 100,m))
+        for dim in range(3):      
+            train_data[:,:,dim]= np.vstack([x for _ in range(n_data)])
+
+        train_labels = np.zeros(train_data.shape)#np.vstack([np.sin(k*x) for i in range(n_data)])
+        for dim in range(3):
+            new_train_labels =np.vstack([np.sin(k*(1+dim)*x) for i in range(n_data)])
+            train_labels[:,:,dim] = new_train_labels
+            plt.plot(train_labels[0,:,dim], label=str(dim))
         plt.show()
         x1_train = train_data
         y1_train = train_labels
@@ -45,7 +51,7 @@ def make_model():
     model=Sequential()
     dim_in = m
     dim_out = m
-    nb_units = 100 # will also work with 2 units, but too long to train
+    nb_units = 10 # will also work with 2 units, but too long to train
 
     model.add(LSTM(input_shape=(None, dim_in),
                         return_sequences=True, 
@@ -58,17 +64,17 @@ def make_model():
 
 def train_model(model, x1_train, y1_train):
     np.random.seed(1337)
-    inputs = x1_train.reshape(x1_train.shape+(1,))
-    outputs = y1_train.reshape(y1_train.shape+(1,))
-    inputs_test = x1_train.reshape(x1_train.shape+(1,))
-    outputs_test = y1_train.reshape(y1_train.shape+(1,))
+    inputs = x1_train.reshape(x1_train.shape)
+    outputs = y1_train.reshape(y1_train.shape)
+    inputs_test = x1_train.reshape(x1_train.shape)
+    outputs_test = y1_train.reshape(y1_train.shape)
     history = model.fit(inputs, outputs, epochs = 5, batch_size = batch_size,
                         validation_data=(inputs_test, outputs_test))
     return model
 
 #plotting(history)
 def predict(model, inputs):
-    inputs = inputs.reshape(inputs.shape+(1,))
+    inputs = inputs.reshape(inputs.shape)
     prediction = model.predict(inputs[:batch_size])[0]
     plt.plot(prediction)
     plt.show()
