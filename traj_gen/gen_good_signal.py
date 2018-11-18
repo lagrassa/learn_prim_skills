@@ -35,7 +35,7 @@ def gen_parameterized_forces(weights, n_traj, N = 3):
     #rbfs = [lambda x: np.exp(-0.05 * (x - center)**2) for center in centers ] 
     result = np.zeros((n_traj, 3))
     #add each of the RBFs with n_traj points
-    center_span =0.03#0.02
+    center_span =0.08#0.02
     for dim in range(3): #for each dimension
         for i in range(len(centers_list)): #for each center
             grid_result = np.zeros((n_traj, 3)) 
@@ -47,7 +47,7 @@ def gen_parameterized_forces(weights, n_traj, N = 3):
                 print("Some sort of shape error", "weights are ", weights.shape)
                 ipdb.set_trace()
     rescaled_result = rescale_to_constraints(result)
-    return rescaled_result #rescaled_result
+    return result #rescaled_result
 
 
 #forces is 3 columns and n_traj points (rows)
@@ -77,7 +77,7 @@ def gen_weights(N=3):
         force_param_per_dim.append(force_params_dim)
     force_params = np.vstack([force_param_per_dim])
     #usually best for them to be mostly sparse actually, so erase each with probability p
-    p = 0.6
+    p = 0.8
     p_matrix = np.random.random((force_params.shape))
     mask = p_matrix > p
     force_params_sparse = np.where(mask, force_params, np.zeros(mask.shape))
@@ -92,16 +92,16 @@ def rescale_to_constraints(force_params_sparse):
         force_params_rescaled[:, dim] = np.interp(arr, (arr.min(), arr.max()), (lower[dim], upper[dim]))
     return force_params_rescaled
 
-def find_best_encoding():
+def find_best_encoding(N=20):
     n_traj = 100  
-    num_iters=500
+    num_iters=6000
     encoder, good_responses = signal_encoding.make_encoder()
     force_to_dist = {}
     force_list = [] 
     class_list = [] 
     dist_list = [] 
-    for i in range(300):
-        weights = gen_weights(N=20)
+    for i in range(num_iters):
+        weights = gen_weights(N=N)
         forces = gen_parameterized_forces(weights, n_traj)
         #print("Min", np.min(forces.flatten()))
         #print("Max", np.max(forces.flatten()))
@@ -125,9 +125,9 @@ def find_best_encoding():
     
     return force_list[best_i]
     
-N=10 
+N=30 
 #plot_forces(gen_parameterized_forces(gen_weights(N=N), 100, N=N))
-find_best_encoding()
+plot_forces(find_best_encoding(N=N))
     
     
     

@@ -2,11 +2,13 @@ from __future__ import division
 import numpy as np
 from PIL import Image
 import keras
+import random
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Conv2D, Flatten
 import ipdb
 import mdp
 import matplotlib.pyplot as plt
+PLOT = False
 
 
 def filename_to_traj(num, name="scrape"):
@@ -14,9 +16,13 @@ def filename_to_traj(num, name="scrape"):
     for dim in ["x", "y", "z"]:
         filename = "recordings/"+ "force_"+dim+name+str(num)+".npy" 
         dim_data= np.load(filename) 
-        dim_data += np.random.normal(0,0.1,dim_data.shape[0])
+        assert(dim_data is not None)
+        dim_data += np.random.normal(0,0.05,dim_data.shape[0])
         data_dims.append(dim_data.reshape(-1,1))
-    return np.hstack(data_dims)
+    data =  np.hstack(data_dims)
+    if PLOT:
+        plot_forces(data)
+    return data
 
 def highest_n_mag_freqs(signal, n):
     signal_fft = np.fft.fft(signal)
@@ -180,15 +186,22 @@ def make_encoder():
 def test_encoding():
     successes = [0,1,2,3,4,5,6,7,8,12]
     fails = [9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
+    diverse_successes = [1,8,9,10,14,15,16,17,18,19]
+    diverse_fails = [2,3,4,5,6,7,20,21,22,23,24]
     good_trajs = [filename_to_traj(num) for num in successes]
+    good_trajs.extend([filename_to_traj(num, name="diverse_test_") for num in diverse_successes])
     bad_trajs = [filename_to_traj(num) for num in fails]
+    bad_trajs.extend([filename_to_traj(num, name="diverse_test_") for num in diverse_fails])
+    for traj_set in [good_trajs, bad_trajs]:
+        random.shuffle(traj_set)
+    
 
     #print_traj_list_stats(good_trajs)
     flows = get_flows(good_trajs)
     good_encoded_signals = [apply_flows(flows, traj) for traj in good_trajs]
     bad_encoded_signals = [apply_flows(flows, traj) for traj in bad_trajs]
-    num_train_good = 7
-    num_train_bad = 10
+    num_train_good = int(0.75*len(good_trajs))
+    num_train_bad = int(0.75*len(bad_trajs))
     data, labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False)
     model, cortical_model = train_classifier(data, labels)
     test_data, test_labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False)
@@ -207,6 +220,18 @@ def test_encoding():
 def apply_cortical_processing(nerve_signal, cortical_model):
    input_signal = nerve_signal.reshape((1,)+nerve_signal.shape+(1,))
    return cortical_model.predict(input_signal)
+
+
+#forces is 3 columns and n_traj points (rows)
+def plot_forces(forces):
+    colors = ['r', 'g', 'b']
+    labels = ['x', 'y', 'z']
+    for i in range(3):
+        plt.plot(forces[:, i], color = colors[i], label=labels[i])
+    plt.legend()
+    plt.show()
+
+
     
 def test_model(model, test_data, test_labels):
     predictions = model.predict(test_data)
