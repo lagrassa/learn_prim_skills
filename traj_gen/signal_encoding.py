@@ -87,6 +87,7 @@ def plot_slow(signal_list, flow, label = "No title"):
 
 "list of flows for each dim"
 def sfa(signal_list):
+    ipdb.set_trace()
     #put into format where columns are variables and rows are observations
     ndims = signal_list[0].shape[1]
     flows = []
@@ -167,7 +168,7 @@ def make_dataset(outputs, label):
     data = data.reshape(data.shape+ (1,))
     return data, labels
 
-def make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False):
+def make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals,  test=False):
     if not test:
         good_data, good_labels = make_dataset(good_encoded_signals[:num_train_good], 1)
         bad_data, bad_labels = make_dataset(bad_encoded_signals[:num_train_bad], 0)
@@ -183,7 +184,8 @@ def make_encoder():
     encoder, good_responses = test_encoding()
     return encoder, good_responses
     
-def test_encoding():
+
+def get_good_bad_traj():
     successes = [0,1,2,3,4,5,6,7,8,12]
     fails = [9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25,26]
     diverse_successes = [1,8,9,10,14,15,16,17,18,19]
@@ -194,7 +196,10 @@ def test_encoding():
     bad_trajs.extend([filename_to_traj(num, name="diverse_test_") for num in diverse_fails])
     for traj_set in [good_trajs, bad_trajs]:
         random.shuffle(traj_set)
-    
+    return good_trajs, bad_trajs
+
+def test_encoding():
+    good_trajs, bad_trajs = get_good_bad_traj() 
 
     #print_traj_list_stats(good_trajs)
     flows = get_flows(good_trajs)
@@ -202,9 +207,9 @@ def test_encoding():
     bad_encoded_signals = [apply_flows(flows, traj) for traj in bad_trajs]
     num_train_good = int(0.75*len(good_trajs))
     num_train_bad = int(0.75*len(bad_trajs))
-    data, labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False)
+    data, labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, test=False)
     model, cortical_model = train_classifier(data, labels)
-    test_data, test_labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False)
+    test_data, test_labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, test=False)
     print ("accuracy", test_model(model, test_data, test_labels))
     def encoder(sample):
         #put it through the signal processing model
@@ -254,5 +259,5 @@ def main():
     make_encoder()
     
 
-
-main()
+if __name__=="__main__":
+    main()
