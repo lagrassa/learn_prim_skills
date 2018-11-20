@@ -8,7 +8,9 @@ from keras.layers import Dense, Activation, Conv2D, Flatten
 import ipdb
 import mdp
 import matplotlib.pyplot as plt
-PLOT = False
+import matplotlib.patches as mpatches
+plt.rcParams['font.size'] = 18
+PLOT = True
 
 
 def filename_to_traj(num, name="scrape"):
@@ -20,8 +22,8 @@ def filename_to_traj(num, name="scrape"):
         dim_data += np.random.normal(0,0.05,dim_data.shape[0])
         data_dims.append(dim_data.reshape(-1,1))
     data =  np.hstack(data_dims)
-    if PLOT:
-        plot_forces(data)
+    #if PLOT:
+    #    plot_forces(data)
     return data
 
 def highest_n_mag_freqs(signal, n):
@@ -137,8 +139,18 @@ def train_classifier(data, labels):
     conv_weights = model.get_weights()[0]
     cortical_model.set_weights([conv_weights])
     one_hot_labels =  keras.utils.to_categorical(labels, num_classes=2)
-    model.fit(data, one_hot_labels, epochs=10, batch_size=5, verbose=1)
+    history = model.fit(data, one_hot_labels, epochs=10, batch_size=5, verbose=1)
+    if PLOT:
+        plotting(history)
     return model, cortical_model
+
+def plotting(history):
+    plt.plot(history.history['loss'], color = "red")
+    red_patch = mpatches.Patch(color='red', label='Training')
+    plt.legend(handles=[red_patch])
+    plt.xlabel('Epochs')
+    plt.ylabel('Categorical cross entropy')
+    plt.show()
 
 
     
@@ -194,6 +206,8 @@ def get_good_bad_traj():
     good_trajs.extend([filename_to_traj(num, name="diverse_test_") for num in diverse_successes])
     bad_trajs = [filename_to_traj(num) for num in fails]
     bad_trajs.extend([filename_to_traj(num, name="diverse_test_") for num in diverse_fails])
+    #plot_forces(good_trajs)
+    #:plot_forces(bad_trajs)
     for traj_set in [good_trajs, bad_trajs]:
         random.shuffle(traj_set)
     return good_trajs, bad_trajs
@@ -204,6 +218,7 @@ def test_encoding():
     #print_traj_list_stats(good_trajs)
     flows = get_flows(good_trajs)
     good_encoded_signals = [apply_flows(flows, traj) for traj in good_trajs]
+    ipdb.set_trace()
     bad_encoded_signals = [apply_flows(flows, traj) for traj in bad_trajs]
     num_train_good = int(0.75*len(good_trajs))
     num_train_bad = int(0.75*len(bad_trajs))
