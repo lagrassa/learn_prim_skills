@@ -1,21 +1,22 @@
 import ipdb
 import os
-
 import tensorflow
 import numpy as np
 tensorflow.VERSION
 from keras.models import load_model
+from helper import smooth_traj, subsample_traj, plot_forces
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.layers import LSTM, TimeDistributed
+from keras.layers import LSTM, TimeDistributed, GRU
 from keras.callbacks import Callback
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+plt.rcParams['font.size'] = 18
 from signal_encoding import get_good_bad_traj, make_good_and_bad_dataset
 
-
+PLOT=True
 m = 3
-batch_size=6
+batch_size=4
 ####################################################
 # Plotting loss and val_loss as function of epochs #
 ####################################################
@@ -38,40 +39,54 @@ def gen_timeline(n_data, n_traj):
 
 def get_data(simple=False):
     if simple:
-        n_traj = 100
-        train_data = gen_timeline(40, 100)
+        n_traj = 20
+        train_data = gen_timeline(40, n_traj)
         x = np.linspace(0,n_traj,n_traj)
         train_labels = np.zeros(train_data.shape)#np.vstack([np.sin(k*x) for i in range(n_data)])
         n_data = 40
-        k = 0.1
+        k = 0.05
         for dim in range(3):
             new_train_labels =np.vstack([np.sin(k*(1+dim)*x) for i in range(n_data)])
             train_labels[:,:,dim] = new_train_labels
-            plt.plot(train_labels[0,:,dim], label=str(dim))
-        plt.show()
+        plot_forces(train_labels[0, :,:])
         x1_train = train_data
         y1_train = train_labels
-        return x1_train, y1_train
+        return y1_train, y1_train
     else:
-        x = np.linspace(0,100,100)
         good_trajs, bad_trajs = get_good_bad_traj()
+        good_trajs = [smooth_traj(traj, n=5) for traj in good_trajs]
+        bad_trajs = [smooth_traj(traj, n=5) for traj in bad_trajs]
+        
+        good_trajs = [subsample_traj(traj, n=5) for traj in good_trajs]
+        bad_trajs = [subsample_traj(traj, n=5) for traj in bad_trajs]
+        n_traj = good_trajs[0].shape[0]
+        if PLOT:
+            plot_forces(good_trajs[2])
         num_train_good = int(0.75*len(good_trajs))
         num_train_bad = int(0.75*len(bad_trajs))
-        data, _ = make_good_and_bad_dataset(num_train_good, num_train_bad, good_trajs, bad_trajs, test=False)
-        timeline = gen_timeline(data.shape[0], 100)
-        data = data[:,:,:,0]
-        return timeline, data
+        #data, _ = make_good_and_bad_dataset(num_train_good, num_train_bad, good_trajs, bad_trajs, test=False)
+        data = np.zeros((num_train_good+num_train_bad, n_traj, 3)) #HACK 
+        for i in range(num_train_good+num_train_bad):
+            data[i, :, :] = good_trajs[0]
+        timeline = gen_timeline(data.shape[0], n_traj)
+        #data = data[:,:,:,0]
+        #data shifted back by repeating the first one lag+1 times
+        train_data = np.zeros(data.shape)
+        first_row = data[:,0,:]
+        lag =1
+        for i in range(lag):
+            train_data[:,i,:] =first_row
+        #and the rest
+        ipdb.set_trace()
+        train_data[lag:,:,:] = data[:lag,:,:]
+        return train_data, data
         #test_data, test_labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False
-
-        
-
 
 def make_model():
     model=Sequential()
     dim_in = m
     dim_out = m
-    nb_units = 50 # will also work with 2 units, but too long to train
-
+    nb_units = 30# will also work with 2 units, but too long to train
     model.add(LSTM(input_shape=(None, dim_in),
                         return_sequences=True, 
                         batch_input_shape=(batch_size, None, dim_in), 
@@ -87,7 +102,7 @@ def train_model(model, x1_train, y1_train):
     outputs = y1_train.reshape(y1_train.shape)
     inputs_test = x1_train.reshape(x1_train.shape)
     outputs_test = y1_train.reshape(y1_train.shape)
-    history = model.fit(inputs, outputs, epochs = 800, batch_size = batch_size,
+    history = model.fit(inputs, outputs, epochs = 10, batch_size = batch_size,
                         validation_data=(inputs_test, outputs_test))
     return model
 
@@ -95,11 +110,11 @@ def train_model(model, x1_train, y1_train):
 def predict(model, inputs):
     inputs = inputs.reshape(inputs.shape)
     prediction = model.predict(inputs[:batch_size])[0]
-    plt.plot(prediction)
-    plt.show()
+    plot_forces(prediction)
 
 def get_traj(input_vec):
     model.predict(inputs[:batch_size])
+
 
 def main():
     x_train, y_train = get_data(simple=False)
