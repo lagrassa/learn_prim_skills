@@ -24,8 +24,8 @@ class SimpleDMPScoop:
       coords = point[0]
       euler = [float(x) for x in np.round(euler_from_quaternion(point[1]),2)]
       self.demo_traj.append(coords + euler)
-
-    self.uc.command_gripper_position(self.arm, demo_trajectory[0][0], demo_trajectory[0][1], 10)
+    #self.uc.command_torso(0.0, 2, True)
+    #self.uc.command_gripper_position(self.arm, demo_trajectory[0][0], demo_trajectory[0][1], 10)
 
 
   #Learn a DMP from demonstration data
@@ -80,54 +80,19 @@ class SimpleDMPScoop:
 
 
   def plotPlan(self):
-      fig, ax1 = plt.subplots(1,1)
-      fig2, ax2 = plt.subplots(1,1)
-      fig3, ax3 = plt.subplots(1,1)
-      fig4, ax4 = plt.subplots(1,1)
-      fig5, ax5 = plt.subplots(1,1)
-      fig6, ax6 = plt.subplots(1,1)
-      fig.suptitle('X')  # Add a title so we know which it is
-      fig2.suptitle('Y')  # Add a title so we know which it is
-      fig3.suptitle('Z')  # Add a title so we know which it is
-      fig4.suptitle('euler X')  # Add a title so we know which it is
-      fig5.suptitle('euler Y')  # Add a title so we know which it is
-      fig6.suptitle('euler Z')  # Add a title so we know which it is
-
-
-
-      plan_x = [x.positions[0] for x in self.plan.plan.points]
-      plan_y = [x.positions[1] for x in self.plan.plan.points]
-      plan_z = [x.positions[2] for x in self.plan.plan.points]
-      plan_euler_x = [x.positions[3] for x in self.plan.plan.points]
-      plan_euler_y = [x.positions[4] for x in self.plan.plan.points]
-      plan_euler_z = [x.positions[5] for x in self.plan.plan.points]
+      fig, axarr = plt.subplots(6)
+      fig.suptitle('DMP plan v. demo trajectory')
+      dims = ["x", "y", "z", "roll", "pitch", "yaw"]
+      dim_poses = [[j.positions[i] for j in self.plan.plan.points] for i in range(len(dims))]
+      demo_poses = [[j[i] for j in self.demo_traj] for i in range(len(dims))]
       times = self.plan.plan.times
-      demo_x = [x[0] for x in self.demo_traj]
-      demo_y = [x[1] for x in self.demo_traj]
-      demo_z = [x[2] for x in self.demo_traj]
-      demo_euler_x = [x[3] for x in self.demo_traj]
-      demo_euler_y = [x[4] for x in self.demo_traj]
-      demo_euler_z = [x[5] for x in self.demo_traj]
       times1 = [0, 5, 10, 15, 20]
-
-      ax1.plot(times, plan_x, color='red')
-      ax1.plot(times1, demo_x)
-
-      ax2.plot(times, plan_y, color='red')
-      ax2.plot(times1, demo_y)
-
-      ax3.plot(times, plan_z, color='red')
-      ax3.plot(times1, demo_z)
-
-      ax4.plot(times, plan_euler_x, color='red')
-      ax4.plot(times1, demo_euler_x)
-
-      ax5.plot(times, plan_euler_y, color='red')
-      ax5.plot(times1, demo_euler_y)
-
-      ax6.plot(times, plan_euler_z, color='red')
-      ax6.plot(times1, demo_euler_z)
-
+      for i in range(len(axarr)):
+          ax = axarr[i]
+          ax.plot(times,dim_poses[i], color="red") 
+          ax.plot(times1,demo_poses[i], color="blue") 
+          ax.set_ylabel(dims[i])
+      plt.xlabel("Time")
       plt.show()
 
       return
@@ -160,29 +125,39 @@ class SimpleDMPScoop:
       x_dot_0 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
       t_0 = 0
       goal = self.demo_traj[-1]
-      goal_thresh = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-      seg_length = -1
-      tau = resp.tau
+      goal_thresh = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+      seg_length = 25#-1
+      self.tau = resp.tau
+      self.alpha = -np.log(0.01) #for 99% convergence at t = tau
       dt = 1
-      integrate_iter = 5
-
+      integrate_iter = 1#5
       self.plan = self.makePlanRequest(x_0, x_dot_0, t_0, goal, goal_thresh,
-                            seg_length, tau, dt, integrate_iter)
+                            seg_length, self.tau, dt, integrate_iter)
+     
 
-  def executePlan(self):
+  def executePlan(self, force_traj):
       positions = [x.positions[0:3] for x in self.plan.plan.points]
       orientation = [quaternion_from_euler(x.positions[3],x.positions[4], x.positions[5]) for x in self.plan.plan.points]
-
-      self.uc.command_gripper_trajectory(self.arm, positions, orientation, self.plan.plan.times)
-
+      #roughly follow position/trajectory but modify it to feel the right forces based on the phase
+      for idx in range(len(positions)):
+          self.uc.command_gripper_position(self.arm, positions[idx], orientation[idx], 0.3)
+          phase = self.calc_phase(self.plan.plan.times[idx], self.tau)
+          force_idx = int(round(phase*force_traj.shape[1]))
+          current_force = force_traj[:, force_idx]
+          self.feel_force(current_force)
+  def feel_force(self, current_force):
+     pass
+  def calc_phase(self, curr_time, tau):
+      return np.exp(-(self.alpha/tau)*curr_time);
 
 if __name__ == '__main__':
    rospy.init_node('simple_scoop_dmp_node')
    simple_scoop = SimpleDMPScoop()
    simple_scoop.makePlan()
    #print(simple_scoop.plan)
-   simple_scoop.plotPlan()
-   simple_scoop.executePlan()
+   #simple_scoop.plotPlan()
+   force_traj = np.zeros((6,20))
+   simple_scoop.executePlan(force_traj)
    #print(plan)
    
   
