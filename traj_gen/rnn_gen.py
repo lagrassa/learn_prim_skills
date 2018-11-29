@@ -129,19 +129,25 @@ def train_model(model, x1_train, y1_train):
     outputs = y1_train.reshape(y1_train.shape)
     inputs_test = x1_train.reshape(x1_train.shape)
     outputs_test = y1_train.reshape(y1_train.shape)
-    history = model.fit(inputs, outputs, epochs = 20, batch_size = batch_size,shuffle=False, 
+    history = model.fit(inputs, outputs, epochs = 2, batch_size = batch_size,shuffle=False, 
                         validation_data=(inputs_test, outputs_test))
     return model
 
 #plotting(history)
 def predict(model, inputs):
     inputs = inputs.reshape(inputs.shape)
-    full_prediction = np.array([])
-    curr_pt= np.zeros((5,1,3))
-    curr_pt[i] = inputs[0,0,:]
-    for i in range(int(inputs.shape[1])):
-        curr_pt = model.predict(curr_pt)
-        full_prediction.append(curr_pt)
+    full_prediction = []
+    curr_set= np.zeros((1,3,5))
+    full_prediction = None
+    ipdb.set_trace()
+    for i in range(13):
+	curr_set[:,:,:-1]= curr_set[:,:,1:]
+	curr_set[:,:,-1]= model.predict(curr_set)[0].T
+        ipdb.set_trace()
+        if full_prediction is None:
+            full_prediction = curr_pt
+        else:
+            full_prediction = np.hstack([full_prediction, curr_pt])
     plot_forces(full_prediction)
 
 def get_traj(input_vec):
@@ -150,7 +156,6 @@ def get_traj(input_vec):
 
 def main():
     x_train, y_train = get_data(simple=False)
-    ipdb.set_trace()
     model = make_model()
     model = train_model(model, x_train, y_train)
     predict(model, x_train)
