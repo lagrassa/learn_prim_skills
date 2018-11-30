@@ -89,13 +89,12 @@ def plot_slow(signal_list, flow, label = "No title"):
 
 "list of flows for each dim"
 def sfa(signal_list):
-    ipdb.set_trace()
     #put into format where columns are variables and rows are observations
     ndims = signal_list[0].shape[1]
     flows = []
     for i in range(ndims):
         flow = (mdp.nodes.EtaComputerNode() +
-            mdp.nodes.TimeFramesNode(5) +
+            mdp.nodes.TimeFramesNode(8) +
             mdp.nodes.PolynomialExpansionNode(2) +
             mdp.nodes.SFANode(output_dim=1, include_last_sample=True) +
             mdp.nodes.EtaComputerNode() )
@@ -218,7 +217,11 @@ def test_encoding():
     #print_traj_list_stats(good_trajs)
     flows = get_flows(good_trajs)
     good_encoded_signals = [apply_flows(flows, traj) for traj in good_trajs]
-    ipdb.set_trace()
+    #im = Image.fromarray(good_encoded_signals[3]*255).resize((120,250)).rotate(90, expand=1)
+    #plt.imshow(im)
+    #plt.xlabel("Time")
+    #plt.ylabel("Dimension(x,y,z)")
+    #plt.show()
     bad_encoded_signals = [apply_flows(flows, traj) for traj in bad_trajs]
     num_train_good = int(0.75*len(good_trajs))
     num_train_bad = int(0.75*len(bad_trajs))

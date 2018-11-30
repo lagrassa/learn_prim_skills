@@ -18,7 +18,6 @@ PLOT=False
 m = 1
 ndim = 3
 batch_size=1
-look_back=5
 ####################################################
 # Plotting loss and val_loss as function of epochs #
 ####################################################
@@ -58,7 +57,7 @@ def create_dataset(dataset, look_back=1):
         return trainX,  trainY
 
 
-def get_data(simple=False):
+def get_data(simple=False, look_back=5):
     if simple:
         n_traj = 20
         train_data = gen_timeline(40, n_traj)
@@ -108,7 +107,7 @@ def get_data(simple=False):
         return train_data, data
         #test_data, test_labels = make_good_and_bad_dataset(num_train_good, num_train_bad, good_encoded_signals, bad_encoded_signals, flows, test=False
 
-def make_model():
+def make_model(look_back=5):
     model=Sequential()
     dim_in = m
     dim_out = m
@@ -133,32 +132,36 @@ def train_model(model, x1_train, y1_train):
                         validation_data=(inputs_test, outputs_test))
     return model
 
-#plotting(history)
-def predict(model, inputs):
-    inputs = inputs.reshape(inputs.shape)
+#plotting(history) numsteps=100, upsample=5)
+def predict(model, curr_set = np.zeros((1,3,5)), numsteps=20, upsample=1):
     full_prediction = []
-    curr_set= np.zeros((1,3,5))
     full_prediction = None
-    ipdb.set_trace()
-    for i in range(13):
-	curr_set[:,:,:-1]= curr_set[:,:,1:]
-	curr_set[:,:,-1]= model.predict(curr_set)[0].T
-        ipdb.set_trace()
-        if full_prediction is None:
-            full_prediction = curr_pt
-        else:
-            full_prediction = np.hstack([full_prediction, curr_pt])
+    for i in range(int(numsteps/upsample)):
+        curr_set[:,:,:-1]= curr_set[:,:,1:]
+        curr_set[:,:,-1]= model.predict(curr_set)[0].T
+        for i in range(upsample):
+            if full_prediction is None:
+                full_prediction = curr_set[:,:,-1]
+            else:
+                full_prediction = np.vstack([full_prediction, curr_set[:,:,-1]])
     plot_forces(full_prediction)
+    return full_prediction
 
 def get_traj(input_vec):
     model.predict(inputs, batch_size=batch_size)
 
+def make_model_from_data(look_back=5):
+    x_train, y_train = get_data(simple=False, look_back=look_back)
+    model = make_model(look_back=look_back)
+    model = train_model(model, x_train, y_train)
+    return model
+
 
 def main():
-    x_train, y_train = get_data(simple=False)
-    model = make_model()
+    x_train, y_train = get_data(simple=False, look_back=5)
+    model = make_model(look_back=5)
     model = train_model(model, x_train, y_train)
-    predict(model, x_train)
+    predict(model, x_train, numsteps=100, upsample=5)
     
 
 if __name__ == "__main__":
