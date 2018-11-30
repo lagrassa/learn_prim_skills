@@ -1,5 +1,6 @@
 from __future__ import division
 import numpy as np
+from helper import plot_forces
 from PIL import Image
 import keras
 import random
@@ -125,9 +126,9 @@ def get_flows(example_signal):
 
 def train_classifier(data, labels):
     model = Sequential()
-    model.add(Conv2D(32, (2, 2), activation='relu', input_shape=data.shape[1:]))
+    model.add(Conv2D(32, (6, 2), activation='relu', input_shape=data.shape[1:]))
     cortical_model = Sequential()
-    cortical_model.add(Conv2D(32, (2, 2), activation='relu', input_shape=data.shape[1:]))
+    cortical_model.add(Conv2D(32, (6, 2), activation='relu', input_shape=data.shape[1:]))
     model.add(Flatten())
     model.add(Dense(32))
     model.add(Activation('relu'))
@@ -139,7 +140,7 @@ def train_classifier(data, labels):
     conv_weights = model.get_weights()[0]
     cortical_model.set_weights([conv_weights])
     one_hot_labels =  keras.utils.to_categorical(labels, num_classes=2)
-    history = model.fit(data, one_hot_labels, epochs=10, batch_size=5, verbose=1)
+    history = model.fit(data, one_hot_labels, epochs=80, batch_size=5, verbose=1)
     if PLOT:
         plotting(history)
     return model, cortical_model
@@ -240,16 +241,6 @@ def test_encoding():
 def apply_cortical_processing(nerve_signal, cortical_model):
    input_signal = nerve_signal.reshape((1,)+nerve_signal.shape+(1,))
    return cortical_model.predict(input_signal)
-
-
-#forces is 3 columns and n_traj points (rows)
-def plot_forces(forces):
-    colors = ['r', 'g', 'b']
-    labels = ['x', 'y', 'z']
-    for i in range(3):
-        plt.plot(forces[:, i], color = colors[i], label=labels[i])
-    plt.legend()
-    plt.show()
 
 
     

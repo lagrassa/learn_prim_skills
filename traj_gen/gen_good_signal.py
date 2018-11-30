@@ -1,6 +1,7 @@
 #from signal_encoding import  encode_signal
 from __future__ import division
 from functools import reduce
+from helper import plot_forces
 import operator
 import ipdb
 import matplotlib.pyplot as plt
@@ -50,14 +51,6 @@ def gen_parameterized_forces(weights, n_traj, N = 3):
     return result #rescaled_result
 
 
-#forces is 3 columns and n_traj points (rows)
-def plot_forces(forces):
-    colors = ['r', 'g', 'b']
-    labels = ['x', 'y', 'z']
-    for i in range(3):
-        plt.plot(forces[:, i], color = colors[i], label=labels[i])
-    plt.legend()
-    plt.show()
 
 def distance(signal, compare_signals):
     num_points = reduce(operator.mul, signal.shape, 1)
