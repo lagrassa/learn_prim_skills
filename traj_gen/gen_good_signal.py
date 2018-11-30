@@ -4,6 +4,7 @@ from functools import reduce
 from helper import plot_forces
 import operator
 import ipdb
+from rnn_gen import make_model_from_data, predict
 import matplotlib.pyplot as plt
 import signal_encoding
 import numpy as np
@@ -20,6 +21,7 @@ PLOT = False
 
 lower = [-1.83,-10.07,-15.6]
 upper = [15.88,0.4,-2.26]
+ROS = False
 
 def rbf(x, width, center):
    return np.exp(-width * (x-center)**2) 
@@ -85,7 +87,8 @@ def rescale_to_constraints(force_params_sparse):
         force_params_rescaled[:, dim] = np.interp(arr, (arr.min(), arr.max()), (lower[dim], upper[dim]))
     return force_params_rescaled
 
-def find_best_encoding(N=20):
+
+def find_best_encoding(N=20, curr_forces = None):
     n_traj = 100  
     num_iters=6000
     encoder, good_responses = signal_encoding.make_encoder()
@@ -93,11 +96,18 @@ def find_best_encoding(N=20):
     force_list = [] 
     class_list = [] 
     dist_list = [] 
+    look_back = 5
+    model = make_model_from_data(look_back=look_back)
+    if curr_forces is None:
+        curr_forces = np.zeros((1,3,look_back))
     for i in range(num_iters):
-        weights = gen_weights(N=N)
-        forces = gen_parameterized_forces(weights, n_traj)
+        #weights = gen_weights(N=N)
+        #forces = gen_parameterized_forces(weights, n_traj)
+        forces=predict(model, curr_set = curr_forces, numsteps=100, upsample=5)
+   
         #print("Min", np.min(forces.flatten()))
         #print("Max", np.max(forces.flatten()))
+        ipdb.set_trace()
         cortical_response, classification_vector = encoder(forces) #we want the second term to be 1
         dist = distance(cortical_response, good_responses)
         prediction = classification_vector[0][1]

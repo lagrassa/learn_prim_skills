@@ -2,10 +2,14 @@
 import roslib
 roslib.load_manifest('dmp')
 import rospy
+from geometry_msgs.msg import Point, WrenchStamped
 import numpy as np
 from dmp.srv import *
 from dmp.msg import *
+import sys
 import matplotlib.pyplot as plt
+sys.path.append("../../traj_gen")
+from gen_good_encoding import find_best_encoding
 
 from control_tools.ros_controller import ROS_Controller
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -134,10 +138,20 @@ class SimpleDMPScoop:
       self.plan = self.makePlanRequest(x_0, x_dot_0, t_0, goal, goal_thresh,
                             seg_length, self.tau, dt, integrate_iter)
      
+  def collect_forces(lookback):
+      force_list = []
+      for i in range(lookback):
+          force_data = rospy.wait_for_message("/ft/r_gripper_motor",WrenchStamped).wrench.force
+          force_i = [force_data.x, force_data.y, force_data.z]
+          force_list.append(force_i)
+      return np.vstack(force_list)
 
   def executePlan(self, force_traj):
       positions = [x.positions[0:3] for x in self.plan.plan.points]
       orientation = [quaternion_from_euler(x.positions[3],x.positions[4], x.positions[5]) for x in self.plan.plan.points]
+      lookback = 5
+      current_forces = collect_forces(lookback=lookback)
+      force_traj = find_best_encoding(curr_forces = current_forces)
       #roughly follow position/trajectory but modify it to feel the right forces based on the phase
       for idx in range(len(positions)):
           self.uc.command_gripper_position(self.arm, positions[idx], orientation[idx], 0.3)
@@ -159,5 +173,3 @@ if __name__ == '__main__':
    force_traj = np.zeros((6,20))
    simple_scoop.executePlan(force_traj)
    #print(plan)
-   
-  
