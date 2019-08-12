@@ -1,4 +1,3 @@
-import ipdb
 import os
 import tensorflow
 import numpy as np
@@ -14,7 +13,7 @@ import matplotlib.patches as mpatches
 plt.rcParams['font.size'] = 18
 from signal_encoding import get_good_bad_traj, make_good_and_bad_dataset, name_to_data
 
-PLOT=False
+PLOT=True
 m = 1
 ndim = 3
 batch_size=1
@@ -153,10 +152,12 @@ def make_model_from_data(look_back=5, restore=False, train=True, name="defaultrn
 
 def main():
     datasets = ["scrape", "diverse_test_", "small_", "big_"]
+    datasets = ["scrape"]
     for name in datasets:
         x_train, y_train = get_data(simple=False, look_back=5, name=name)
-        model = make_model_from_data(look_back=5, restore=False, train=True, name=name)
-        predict(model, numsteps=100, upsample=5)
+        curr_set = x_train[0]
+        model = make_model_from_data(curr_set = curr_set, look_back=5, restore=False, train=True, name=name)
+        y = predict(model, numsteps=100, upsample=5)
     
 
 if __name__ == "__main__":
